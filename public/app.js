@@ -269,7 +269,7 @@ async function loadRecipes() {
     S.useDemo = false;
     // Also try loading categories
     try {
-      const catData = await apiGet('/api/kitchen-assistant/categories');
+      const catData = await apiGet('/api/kitchen-assistant/recipe-categories');
       S.categories = catData.categories || [];
     } catch(e) { /* categories are optional */ }
     // If we have no recipes, fall back to demo so the UI still works
