@@ -9,7 +9,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        sync: false
+        value: "postgresql://servio_database_user:TcwabZxVG1rKKRlIJAxKsjYeXOQVx0Tg@dpg-d5nblj63jp1c73akurrg-a/servio_database"
       - key: DATABASE_SSL
         value: "true"
       - key: PORT
