@@ -410,14 +410,14 @@ function addTimer(name, min) {
 function toggleTimer(id) {
   S.timers = S.timers.map(t => {
     if (t.id !== id) return t;
-    if (t.done) return { ...t, remaining: t.total, running: true, done: false, endsAt: Date.now() + t.total * 1000 };
+    if (t.done) return { ...t, remaining: t.total, running: true, done: false, ack: false, endsAt: Date.now() + t.total * 1000, completedAt: null };
     if (t.running) return { ...t, running: false, remaining: Math.max(0, Math.round(((t.endsAt || Date.now()) - Date.now()) / 1000)), endsAt: null };
     return { ...t, running: true, endsAt: Date.now() + t.remaining * 1000 };
   });
   persistTimers(); render();
 }
 function resetTimer(id) {
-  S.timers = S.timers.map(t => t.id === id ? { ...t, remaining: t.total, running: false, done: false, endsAt: null } : t);
+  S.timers = S.timers.map(t => t.id === id ? { ...t, remaining: t.total, running: false, done: false, endsAt: null, ack: false, completedAt: null } : t);
   persistTimers(); render();
 }
 function deleteTimer(id) {
@@ -440,18 +440,26 @@ function nudgeTimer(id, seconds) {
 // Tick every second
 setInterval(() => {
   const now = Date.now();
-  let changed = false;
+  let newDoneCount = 0;
   S.timers = S.timers.map(t => {
     if (t.running && t.endsAt) {
       const rem = Math.max(0, Math.round((t.endsAt - now) / 1000));
-      if (rem <= 0 && !t.done) { changed = true; return { ...t, remaining: 0, running: false, done: true, endsAt: null }; }
-      if (rem !== t.remaining) { changed = true; return { ...t, remaining: rem }; }
+      if (rem <= 0 && !t.done) {
+        newDoneCount++;
+        return { ...t, remaining: 0, running: false, done: true, endsAt: null, completedAt: now };
+      }
+      if (rem !== t.remaining) return { ...t, remaining: rem };
     }
     return t;
   });
-  if (changed) { persistTimers(); beep(); }
+  // Auto-remove completed timers after 30 seconds
+  S.timers = S.timers.filter(t => {
+    if (t.done && t.completedAt && now - t.completedAt > 30000) return false;
+    return true;
+  });
+  if (newDoneCount > 0) { persistTimers(); beep(); }
   if (S.timerOpen || S.timers.some(t => t.done)) render();
-  else if (changed) render();
+  else if (newDoneCount > 0) render();
 }, 1000);
 
 // ─── Batch scaling ──────────────────────────────────────────────────────────────
@@ -1179,7 +1187,7 @@ function renderAlert() {
     el('div', { className: 'alert-title' }, '"' + primary.name + '" — ' + tr.timerDone),
     doneUnacked.length > 1 ? el('div', { style: { fontFamily: "'JetBrains Mono'", fontWeight: '700', fontSize: '12px', opacity: '.82' } }, '+' + (doneUnacked.length - 1)) : null
   ));
-  banner.appendChild(el('button', { onClick: () => { resetTimer(primary.id); }, style: { border: '1px solid rgba(255,255,255,.55)', background: 'transparent', color: '#fff' } }, tr.stopWord));
+  banner.appendChild(el('button', { onClick: () => { S.timers = S.timers.map(t => t.id === primary.id ? { ...t, ack: true } : t); persistTimers(); render(); }, style: { border: '1px solid rgba(255,255,255,.55)', background: 'transparent', color: '#fff' } }, tr.stopWord));
   return banner;
 }
 
