@@ -7,7 +7,9 @@
 'use strict';
 
 // ─── Config ────────────────────────────────────────────────────────────────────
-const API = '';  // same origin
+// Points to the main Servio backend — kitchen-line is now a connected tablet UI,
+// not a standalone service. Auth token is passed via ?token= on launch.
+const API = 'https://servio-backend-zexb.onrender.com';
 
 // ─── I18n ──────────────────────────────────────────────────────────────────────
 const T = {
@@ -193,22 +195,25 @@ try { S.checked = JSON.parse(localStorage.getItem('kl_checked') || '{}'); } catc
 
 // ─── Auth ───────────────────────────────────────────────────────────────────────
 function getToken() {
-  // Check URL param first
+  // Check URL param first (launched from Servio dashboard with ?token=)
   const urlParams = new URLSearchParams(window.location.search);
   const urlToken = urlParams.get('token');
   if (urlToken) {
-    localStorage.setItem('servio_token', urlToken);
-    // Clean URL
+    // Standardized key: servio_access_token — shared across all Servio properties
+    localStorage.setItem('servio_access_token', urlToken);
+    // Clean URL immediately after capturing the token
     window.history.replaceState({}, document.title, window.location.pathname);
     return urlToken;
   }
-  return localStorage.getItem('servio_token');
+  // Fall back to existing key for backwards compat during transition
+  return localStorage.getItem('servio_access_token') || localStorage.getItem('servio_token');
 }
 
 function authHeaders(extra) {
   const headers = { ...(extra || {}) };
   const token = getToken();
   if (token) headers['Authorization'] = 'Bearer ' + token;
+  // API key is optional (kitchen-line uses JWT Bearer from Servio dashboard)
   const apiKey = localStorage.getItem('servio_api_key');
   if (apiKey) headers['X-API-Key'] = apiKey;
   return headers;
@@ -257,18 +262,23 @@ async function apiDelete(path) {
 
 // ─── Data loading ───────────────────────────────────────────────────────────────
 async function loadRecipes() {
-  const companyId = getCompanyId();
   try {
-    const data = await apiGet('/api/recipes');
+    // Point to main Servio backend kitchen-assistant recipe routes
+    const data = await apiGet('/api/kitchen-assistant/recipes');
     S.recipes = data.recipes || [];
     S.useDemo = false;
-    // If we have no auth/company and API returned nothing, fall back to demo
-    if (!companyId && S.recipes.length === 0) {
+    // Also try loading categories
+    try {
+      const catData = await apiGet('/api/kitchen-assistant/categories');
+      S.categories = catData.categories || [];
+    } catch(e) { /* categories are optional */ }
+    // If we have no recipes, fall back to demo so the UI still works
+    if (S.recipes.length === 0) {
       S.recipes = DEMO_RECIPES.slice();
       S.useDemo = true;
     }
   } catch(e) {
-    // Fallback to demo recipes
+    // Fallback to demo recipes when offline or main backend unreachable
     S.recipes = DEMO_RECIPES.slice();
     S.useDemo = true;
   }
@@ -284,7 +294,7 @@ async function loadRecipeDetail(id) {
     return;
   }
   try {
-    const data = await apiGet('/api/recipes/' + id);
+    const data = await apiGet('/api/kitchen-assistant/recipes/' + id);
     S.selectedRecipe = mapRecipeForUI(data.recipe);
     render();
   } catch(e) {
