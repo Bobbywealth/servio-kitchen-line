@@ -726,7 +726,7 @@ async function deleteRecipe(id) {
     render();
     return;
   }
-  try { await apiDelete('/api/recipes/' + id); } catch(e) {}
+  try { await apiDelete('/api/kitchen-assistant/recipes/' + id); } catch(e) {}
   await loadRecipes();
 }
 
@@ -909,7 +909,7 @@ async function loadRecipeForEdit(source) {
   } else {
     // Load from API
     try {
-      const data = await apiGet('/api/recipes/' + source.id);
+      const data = await apiGet('/api/kitchen-assistant/recipes/' + source.id);
       const r = data.recipe;
       const mapped = mapRecipeForUI(r);
       S.draft = {
@@ -1061,9 +1061,9 @@ async function saveDraft() {
 
   try {
     if (S.editingId && !S.useDemo) {
-      await apiPut('/api/recipes/' + S.editingId, payload);
+      await apiPut('/api/kitchen-assistant/recipes/' + S.editingId, payload);
     } else if (!S.useDemo) {
-      await apiPost('/api/recipes', payload);
+      await apiPost('/api/kitchen-assistant/recipes', payload);
     } else {
       // Demo mode — save to local array
       const newRecipe = {
