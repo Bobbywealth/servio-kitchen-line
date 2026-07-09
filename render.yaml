@@ -8,10 +8,9 @@ services:
     startCommand: node server/index.js
     healthCheckPath: /api/health
     envVars:
-      - key: DATABASE_URL
-        value: "postgresql://servio_database_user:TcwabZxVG1rKKRlIJAxKsjYeXOQVx0Tg@dpg-d5nblj63jp1c73akurrg-a/servio_database"
-      - key: DATABASE_SSL
-        value: "true"
       - key: PORT
         value: "5001"
+      # Optional: comma-separated CORS origins to allow (default: all onrender.com + localhost)
+      # - key: ALLOWED_ORIGINS
+      #   value: "https://servio-app.onrender.com,https://servio-restaurant-platform.onrender.com"
     autoDeploy: true
