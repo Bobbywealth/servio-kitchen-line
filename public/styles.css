@@ -96,8 +96,8 @@ img { max-width: 100%; display: block; }
 .search-wrap:focus-within { border-color: var(--accent); }
 .search-wrap span { color: var(--text-faint); font-size: 18px; flex-shrink: 0; }
 .search-wrap input {
-  flex: 1; height: 44px; background: transparent; border: none; outline: none;
-  color: var(--text); font-size: 15px;
+  flex: 1; min-width: 0; height: 44px; background: transparent; border: none; outline: none;
+  color: var(--text); font-size: 15px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
 }
 .search-wrap input::placeholder { color: var(--text-faint); }
 
