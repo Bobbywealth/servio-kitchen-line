@@ -133,7 +133,7 @@ img { max-width: 100%; display: block; }
 .cat-bar::-webkit-scrollbar { display: none; }
 .cat-pill {
   white-space: nowrap; padding: 9px 16px;
-  min-height: 40px; border-radius: 20px;
+  min-height: 44px; border-radius: 20px;
   font-size: 14px; font-weight: 600;
   background: var(--surface); border: 1px solid var(--border);
   color: var(--text-dim);
@@ -388,7 +388,7 @@ img { max-width: 100%; display: block; }
 }
 .timer-header h2 { font-size: 16px; font-weight: 800; letter-spacing: .06em; }
 .timer-close {
-  width: 36px; height: 36px; border-radius: 9px; font-size: 22px;
+  width: 44px; height: 44px; border-radius: 9px; font-size: 22px;
   color: var(--text-dim); transition: all .15s;
 }
 .timer-close:hover { color: var(--text); background: var(--surface-2); }
@@ -473,7 +473,7 @@ img { max-width: 100%; display: block; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 500px) {
-  .header-actions button { min-width: 40px; padding: 0 8px; font-size: 13px; }
+  .header-actions button { min-width: 40px; padding: 0 8px; font-size: 13px; flex-shrink: 1; }
 }
 
 /* iPad landscape optimization */
