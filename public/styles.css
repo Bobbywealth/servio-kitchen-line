@@ -411,7 +411,7 @@ img { max-width: 100%; display: block; }
 .timer-custom input:last-of-type { width: 70px; font-family: var(--font-mono); font-weight: 700; text-align: center; }
 .timer-custom input:focus { border-color: var(--accent); }
 .add-btn {
-  min-height: 44px; padding: 0 16px; border-radius: 10px;
+  min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 10px;
   background: var(--accent); color: var(--accent-ink); font-weight: 700;
 }
 .add-btn:hover { filter: brightness(1.08); }
@@ -476,7 +476,7 @@ img { max-width: 100%; display: block; }
   .header { flex-wrap: wrap; row-gap: 10px; }
   .search-wrap { flex: 1 1 100%; order: 3; max-width: none; margin-left: 0; }
   .header-actions { margin-left: auto; }
-  .header-actions button { min-width: 40px; padding: 0 8px; font-size: 13px; flex-shrink: 1; }
+  .header-actions button { min-width: 44px; padding: 0 8px; font-size: 13px; flex-shrink: 1; }
 }
 
 /* iPad landscape optimization */
