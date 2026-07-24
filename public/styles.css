@@ -473,6 +473,9 @@ img { max-width: 100%; display: block; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 500px) {
+  .header { flex-wrap: wrap; row-gap: 10px; }
+  .search-wrap { flex: 1 1 100%; order: 3; max-width: none; margin-left: 0; }
+  .header-actions { margin-left: auto; }
   .header-actions button { min-width: 40px; padding: 0 8px; font-size: 13px; flex-shrink: 1; }
 }
 
