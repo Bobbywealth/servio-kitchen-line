@@ -194,7 +194,7 @@ img { max-width: 100%; display: block; }
 }
 .card-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 6px; }
 .card-actions button {
-  flex: 1; min-height: 40px; border-radius: 9px; font-size: 13px; font-weight: 700;
+  flex: 1; min-height: 44px; border-radius: 9px; font-size: 13px; font-weight: 700;
   border: 1px solid var(--border); background: var(--surface-2); color: var(--text-dim);
   transition: all .15s;
 }
@@ -248,7 +248,7 @@ img { max-width: 100%; display: block; }
 .batch-label { font-family: var(--font-head); font-weight: 800; font-size: 13px; letter-spacing: .06em; color: var(--text-dim); }
 .batch-presets { display: flex; gap: 6px; }
 .batch-presets button {
-  min-height: 40px; min-width: 44px; padding: 0 12px; border-radius: 9px;
+  min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 9px;
   font-family: var(--font-mono); font-weight: 700; font-size: 15px;
   border: 1px solid var(--border); background: var(--surface-2); color: var(--text-dim);
   transition: all .15s;
@@ -256,7 +256,7 @@ img { max-width: 100%; display: block; }
 .batch-presets button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .batch-presets button:hover { border-color: var(--border-strong); }
 .batch-manual { display: flex; align-items: center; gap: 0; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; margin-left: auto; }
-.batch-manual button { width: 40px; height: 40px; font-size: 20px; font-weight: 700; background: var(--surface-2); color: var(--text); }
+.batch-manual button { width: 44px; height: 44px; font-size: 20px; font-weight: 700; background: var(--surface-2); color: var(--text); }
 .batch-manual button:hover { background: var(--elevated); }
 .batch-manual .val { min-width: 56px; text-align: center; font-family: var(--font-mono); font-weight: 800; font-size: 18px; padding: 0 8px; background: var(--surface); }
 
@@ -312,7 +312,7 @@ img { max-width: 100%; display: block; }
 .step-text { font-size: 15px; line-height: 1.55; flex: 1; }
 .step-item.checked .step-text { text-decoration: line-through; color: var(--text-faint); }
 .step-timer-btn {
-  min-height: 40px; padding: 0 14px; margin-top: 10px; border-radius: 9px;
+  min-height: 44px; padding: 0 14px; margin-top: 10px; border-radius: 9px;
   background: var(--accent); color: var(--accent-ink);
   font-family: var(--font-mono); font-weight: 700; font-size: 13px;
   display: inline-flex; align-items: center; gap: 6px;
