@@ -1,7 +1,7 @@
 {
   "name": "servio-kitchen-line",
   "version": "1.0.0",
-  "description": "Standalone Kitchen Line recipe app for Servio — tablet-optimized, DB-backed",
+  "description": "Standalone Kitchen Line recipe app for Servio — tablet-optimized static frontend that reads/writes recipes via the main Servio backend API",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
@@ -11,8 +11,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "pg": "^8.12.0",
-    "cors": "^2.8.5"
+    "express": "4.19.2",
+    "cors": "2.8.5"
   }
 }

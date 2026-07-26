@@ -195,26 +195,42 @@ try { S.checked = JSON.parse(localStorage.getItem('kl_checked') || '{}'); } catc
 
 // ─── Auth ───────────────────────────────────────────────────────────────────────
 function getToken() {
-  // Check URL param first (launched from Servio dashboard with ?token=)
+  // Capture credentials from the URL on launch:
+  //   ?token=<jwt>   — launched from the Servio dashboard (preferred)
+  //   ?key=<sk_...>  — standalone API-key auth (e.g. a shared kitchen tablet)
   const urlParams = new URLSearchParams(window.location.search);
   const urlToken = urlParams.get('token');
-  if (urlToken) {
-    // Standardized key: servio_access_token — shared across all Servio properties
-    localStorage.setItem('servio_access_token', urlToken);
-    // Clean URL immediately after capturing the token
+  const urlKey = urlParams.get('key');
+  if (urlToken || urlKey) {
+    if (urlToken) localStorage.setItem('servio_access_token', urlToken);
+    if (urlKey) localStorage.setItem('servio_api_key', urlKey);
+    // Clean the URL immediately so credentials don't linger in history/address bar
     window.history.replaceState({}, document.title, window.location.pathname);
-    return urlToken;
   }
-  // Fall back to existing key for backwards compat during transition
+  // JWT preferred; fall back to legacy key for backwards compat during transition
   return localStorage.getItem('servio_access_token') || localStorage.getItem('servio_token');
+}
+
+function getApiKey() {
+  // servio_api_key is captured alongside the token in getToken(); read-only here.
+  return localStorage.getItem('servio_api_key');
 }
 
 function authHeaders(extra) {
   const headers = { ...(extra || {}) };
   const token = getToken();
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  // API key is optional (kitchen-line uses JWT Bearer from Servio dashboard)
-  const apiKey = localStorage.getItem('servio_api_key');
+  const apiKey = getApiKey();
+  if (token) {
+    // JWT Bearer from the Servio dashboard launch
+    headers['Authorization'] = 'Bearer ' + token;
+  } else if (apiKey) {
+    // Standalone API-key auth: the backend's requireAuth accepts Bearer sk_...
+    // (the /api/kitchen-assistant mount runs requireAuth BEFORE the scoped
+    //  requireAuthOrApiKey middleware, so the key must ride on Authorization,
+    //  not X-API-Key alone — otherwise the mount returns 401.)
+    headers['Authorization'] = 'Bearer ' + apiKey;
+  }
+  // Also expose the key via X-API-Key when present (read by the scoped middleware)
   if (apiKey) headers['X-API-Key'] = apiKey;
   return headers;
 }
@@ -269,7 +285,7 @@ async function loadRecipes() {
     S.useDemo = false;
     // Also try loading categories
     try {
-      const catData = await apiGet('/api/kitchen-assistant/recipe-categories');
+      const catData = await apiGet('/api/kitchen-assistant/categories');
       S.categories = catData.categories || [];
     } catch(e) { /* categories are optional */ }
     // If we have no recipes, fall back to demo so the UI still works
