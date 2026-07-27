@@ -486,3 +486,14 @@ img { max-width: 100%; display: block; }
   .recipe-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
   .card-img { height: 120px; font-size: 42px; }
 }
+
+
+/* ─── Hold-to-reorder ─────────────────────────────────────────────────────── */
+.recipe-card { touch-action: pan-y; }          /* allow vertical scroll; hold still to drag */
+.recipe-card.drag-source { opacity: 0.32; filter: grayscale(0.4); }
+.drag-ghost { border-radius: var(--radius, 16px); overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.34); }
+.reorder-hint {
+  margin: 6px 22px 0; padding: 8px 14px; max-width: 1440px;
+  border-radius: 10px; font-size: 13px; font-family: 'Archivo', sans-serif; font-weight: 600;
+  color: var(--accent, #e0a83a); background: rgba(224,168,58,.08); border: 1px solid rgba(224,168,58,.22);
+}

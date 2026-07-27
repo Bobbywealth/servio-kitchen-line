@@ -543,6 +543,103 @@ function catLabel(key) {
   return key;
 }
 
+// ─── Hold-to-reorder within a category (long-press drag) ────────────────────────
+const REORDER_HOLD_MS = 450;     // press duration before drag begins
+const REORDER_MOVE_TOL = 10;     // px of movement that cancels the hold (scroll/tap)
+let _drag = null;                // active drag state
+let _lastDragEnd = 0;            // suppress the click that follows a drag
+
+function sortRecipes(a, b) {
+  const sa = Number(a.sort_order) || 0, sb = Number(b.sort_order) || 0;
+  if (sa !== sb) return sa - sb;
+  return String(a.dish_name || a.name || '').localeCompare(String(b.dish_name || b.name || ''));
+}
+
+function attachHoldToReorder(card, r) {
+  if (!card) return;
+  let timer = null, sx = 0, sy = 0, armed = false;
+  card.addEventListener('pointerdown', (e) => {
+    if (S.category === 'All' || S.layout !== 'grid') return;   // reorder within one category, grid only
+    if (e.button != null && e.button !== 0) return;
+    armed = true; sx = e.clientX; sy = e.clientY;
+    timer = setTimeout(() => { if (armed) beginReorderDrag(card, r, e); }, REORDER_HOLD_MS);
+  });
+  const cancel = () => { armed = false; clearTimeout(timer); };
+  card.addEventListener('pointermove', (e) => {
+    if (!armed) return;
+    if (Math.abs(e.clientX - sx) > REORDER_MOVE_TOL || Math.abs(e.clientY - sy) > REORDER_MOVE_TOL) cancel();
+  });
+  card.addEventListener('pointerup', cancel);
+  card.addEventListener('pointercancel', cancel);
+  card.addEventListener('pointerleave', cancel);
+}
+
+function beginReorderDrag(card, r, e) {
+  if (_drag) return;
+  const grid = card.parentElement;
+  if (!grid) return;
+  const rect = card.getBoundingClientRect();
+  const ghost = card.cloneNode(true);
+  ghost.classList.add('drag-ghost');
+  Object.assign(ghost.style, {
+    position: 'fixed', left: rect.left + 'px', top: rect.top + 'px',
+    width: rect.width + 'px', margin: '0', pointerEvents: 'none',
+    zIndex: '1000', opacity: '0.96', transform: 'scale(1.03)'
+  });
+  document.body.appendChild(ghost);
+  card.classList.add('drag-source');
+  _drag = { grid, card, ghost, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
+  document.body.style.userSelect = 'none';
+  window.addEventListener('pointermove', onReorderMove);
+  window.addEventListener('pointerup', endReorderDrag);
+  window.addEventListener('pointercancel', endReorderDrag);
+}
+
+function onReorderMove(e) {
+  if (!_drag) return;
+  _drag.ghost.style.left = (e.clientX - _drag.offsetX) + 'px';
+  _drag.ghost.style.top = (e.clientY - _drag.offsetY) + 'px';
+  _drag.ghost.style.display = 'none';
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  _drag.ghost.style.display = '';
+  if (!hit) return;
+  const over = hit.closest('.recipe-card');
+  if (!over || over === _drag.card || !_drag.grid.contains(over)) return;
+  const cards = Array.from(_drag.grid.children).filter(c => c.classList.contains('recipe-card'));
+  const from = cards.indexOf(_drag.card), to = cards.indexOf(over);
+  if (from === -1 || to === -1 || from === to) return;
+  _drag.grid.insertBefore(_drag.card, from < to ? over.nextSibling : over);
+}
+
+function endReorderDrag() {
+  window.removeEventListener('pointermove', onReorderMove);
+  window.removeEventListener('pointerup', endReorderDrag);
+  window.removeEventListener('pointercancel', endReorderDrag);
+  if (!_drag) return;
+  document.body.style.userSelect = '';
+  const grid = _drag.grid;
+  _drag.ghost.remove();
+  _drag.card.classList.remove('drag-source');
+  _drag = null;
+  _lastDragEnd = Date.now();
+  const orderedIds = Array.from(grid.children)
+    .filter(c => c.classList.contains('recipe-card'))
+    .map(c => Number(c.getAttribute('data-rid')))
+    .filter(id => Number.isInteger(id) && id > 0);
+  persistReorder(orderedIds);
+}
+
+async function persistReorder(orderedIds) {
+  if (!orderedIds.length) return;
+  const pos = {}; orderedIds.forEach((id, i) => pos[id] = i + 1);
+  S.recipes.forEach(r => { if (pos[r.id] != null) r.sort_order = pos[r.id]; });
+  if (!S.useDemo) {
+    try { await apiPut('/api/kitchen-assistant/recipes/reorder', { orderedIds }); }
+    catch (e) { console.error('reorder persist failed', e); }
+  }
+  render();
+}
+
 function el(tag, props, ...children) {
   const e = document.createElement(tag);
   if (props) {
@@ -641,6 +738,7 @@ function renderLibrary() {
   if (S.category !== 'All') list = list.filter(r => recipeCategoryName(r) === S.category);
   const q = S.search.trim().toLowerCase();
   if (q) list = list.filter(r => (r.dish_name || r.name || '').toLowerCase().includes(q) || (r.description || r.quickNote || '').toLowerCase().includes(q));
+  list.sort(sortRecipes);
 
   const catBar = el('div', { className: 'cat-bar', style: { padding: '20px 22px 0', maxWidth: '1440px', margin: '0 auto' } });
   // Build category pills dynamically from the categories actually present in recipes
@@ -687,6 +785,10 @@ function renderLibrary() {
     }, '⚠ Demo mode — not connected to Servio database. Open via Servio dashboard to see your recipes.'));
   }
 
+  if (S.category !== 'All' && S.layout === 'grid' && !S.useDemo && list.length > 1) {
+    wrap.appendChild(el('div', { className: 'reorder-hint' }, S.lang === 'es' ? 'Mantén pulsada una tarjeta para reordenar' : 'Tip: hold a card to rearrange'));
+  }
+
   if (list.length === 0) {
     wrap.appendChild(el('div', { className: 'empty-state' },
       el('div', { className: 'icon' }, '🍳'),
@@ -722,7 +824,7 @@ function renderCard(r) {
     yield: r.servings ? r.servings + ' ' + t().yieldUnit : '—'
   };
 
-  const card = el('div', { className: 'recipe-card', onClick: () => { S.view = 'detail'; S.selectedId = r.id; S.scale = 1; loadRecipeDetail(r.id); } });
+  const card = el('div', { className: 'recipe-card', 'data-rid': String(r.id), onClick: () => { if (Date.now() - _lastDragEnd < 500) return; S.view = 'detail'; S.selectedId = r.id; S.scale = 1; loadRecipeDetail(r.id); } });
   const imgArea = el('div', { className: 'card-img', style: { background: col + '22' } });
   if (r.image_url) {
     const photo = el('img', { className: 'card-img-photo', src: r.image_url, alt: r.dish_name || r.name || '', loading: 'lazy' });
@@ -752,6 +854,7 @@ function renderCard(r) {
     actions.appendChild(el('button', { onClick: e => { e.stopPropagation(); deleteRecipe(r.id); }, style: { color: 'var(--danger)' } }, t().delete));
     card.appendChild(actions);
   }
+  attachHoldToReorder(card, r);
   return card;
 }
 
