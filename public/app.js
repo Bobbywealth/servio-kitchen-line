@@ -281,7 +281,8 @@ async function loadRecipes() {
   try {
     // Point to main Servio backend kitchen-assistant recipe routes
     const data = await apiGet('/api/kitchen-assistant/recipes');
-    S.recipes = data.recipes || [];
+    // Exclude global seed/demo recipes (no company_id) — not owned by this restaurant
+    S.recipes = (data.recipes || []).filter(r => r.company_id);
     S.useDemo = false;
     // Also try loading categories
     try {
