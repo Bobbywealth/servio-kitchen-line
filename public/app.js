@@ -334,6 +334,7 @@ function mapRecipeForUI(r) {
 
   return {
     id: r.id,
+    image_url: r.image_url || null,
     name: r.dish_name,
     category: r.category_name || 'Lunch',
     prepTime: r.prep_time_minutes || 0,
@@ -693,7 +694,14 @@ function renderCard(r) {
   };
 
   const card = el('div', { className: 'recipe-card', onClick: () => { S.view = 'detail'; S.selectedId = r.id; S.scale = 1; loadRecipeDetail(r.id); } });
-  const imgArea = el('div', { className: 'card-img', style: { background: col + '22' } }, '🍽');
+  const imgArea = el('div', { className: 'card-img', style: { background: col + '22' } });
+  if (r.image_url) {
+    const photo = el('img', { className: 'card-img-photo', src: r.image_url, alt: r.dish_name || r.name || '', loading: 'lazy' });
+    photo.onerror = () => { photo.remove(); imgArea.appendChild(document.createTextNode('🍽')); };
+    imgArea.appendChild(photo);
+  } else {
+    imgArea.appendChild(document.createTextNode('🍽'));
+  }
   imgArea.appendChild(el('div', { className: 'card-overlay' },
     el('span', { className: 'card-chip', style: { background: col + '26', color: col } }, cat),
     inactive ? el('span', { className: 'card-chip inactive' }, t().inactive) : null
@@ -762,6 +770,12 @@ function renderDetail() {
   const col = catColor(d.category) || '#e0a83a';
   const tr = t();
   const wrap = el('div', { className: 'detail-view' });
+
+  // Hero photo
+  if (d.image_url) {
+    const hero = el('img', { className: 'detail-hero-photo', src: d.image_url, alt: d.name || '' });
+    wrap.appendChild(hero);
+  }
 
   // Header
   const hdr = el('div', { className: 'detail-header' });

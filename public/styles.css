@@ -174,9 +174,11 @@ img { max-width: 100%; display: block; }
 .recipe-card:hover { transform: translateY(-2px); border-color: var(--border-strong); box-shadow: var(--shadow-2); }
 .card-img {
   height: 150px; display: flex; align-items: center; justify-content: center;
-  font-size: 52px; position: relative;
+  font-size: 52px; position: relative; overflow: hidden;
 }
-.card-overlay { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 6px; }
+.card-img-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.detail-hero-photo { width: 100%; max-height: 280px; object-fit: cover; border-radius: 14px; display: block; margin-bottom: 16px; }
+.card-overlay { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 6px; z-index: 2; }
 .card-chip {
   font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
   padding: 5px 11px; border-radius: 8px; backdrop-filter: blur(4px);
