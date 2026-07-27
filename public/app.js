@@ -66,16 +66,29 @@ const T = {
 };
 
 // ─── Categories ─────────────────────────────────────────────────────────────────
-const CATS = [
-  { key: 'All', color: null },
-  { key: 'Breakfast', color: '#e6b84a' },
-  { key: 'Lunch', color: '#e0553a' },
-  { key: 'Seafood', color: '#4fa3d8' },
-  { key: 'Sides', color: '#43b877' },
-  { key: 'Sauces', color: '#d64f8f' },
-  { key: 'Drinks', color: '#8f7fe0' },
-  { key: 'Specials', color: '#e0a83a' },
-];
+// Category colors by name (pills/chips). Unknown categories fall back to a default.
+const CAT_COLORS = {
+  All: null, Breakfast: '#e6b84a', Lunch: '#e0553a', Seafood: '#4fa3d8',
+  Sides: '#43b877', Sauces: '#d64f8f', Drinks: '#8f7fe0', Specials: '#e0a83a',
+  Wings: '#c0563b', Patties: '#9b6b3e', Appetizers: '#d98c3a', 'Main Courses': '#e0553a',
+  Desserts: '#c06a9b', Beverages: '#8f7fe0'
+};
+
+// Recipes carry category_id (not category_name) — resolve the name from the loaded
+// categories list. This is the single source of truth for a recipe's category.
+function categoryNameById(id) {
+  if (id == null) return null;
+  const c = (S.categories || []).find(x => String(x.id) === String(id));
+  return c ? c.name : null;
+}
+function categoryIdByName(name) {
+  if (!name) return null;
+  const c = (S.categories || []).find(x => (x.name || '').toLowerCase() === String(name).toLowerCase());
+  return c ? c.id : null;
+}
+function recipeCategoryName(r) {
+  return categoryNameById(r && r.category_id) || (r && r.category_name) || 'Uncategorized';
+}
 
 // ─── Demo recipes (fallback when no auth) ───────────────────────────────────────
 const DEMO_RECIPES = [
@@ -337,7 +350,7 @@ function mapRecipeForUI(r) {
     id: r.id,
     image_url: r.image_url || null,
     name: r.dish_name,
-    category: r.category_name || 'Lunch',
+    category: recipeCategoryName(r),
     prepTime: r.prep_time_minutes || 0,
     cookTime: r.cook_time_minutes || 0,
     yield: r.servings ? (r.servings + ' ' + t().yieldUnit) : '—',
@@ -519,13 +532,12 @@ function fmtTime(s) {
 }
 
 function catColor(key) {
-  if (key === 'All') return null;
-  const c = CATS.find(x => x.key === key);
-  return c ? c.color : '#e0a83a';
+  if (!key || key === 'All') return null;
+  return CAT_COLORS[key] || '#e0a83a';
 }
 function catLabel(key) {
   if (S.lang === 'es') {
-    const ES = { All: 'Todas', Breakfast: 'Desayuno', Lunch: 'Almuerzo', Seafood: 'Mariscos', Sides: 'Guarniciones', Sauces: 'Salsas', Drinks: 'Bebidas', Specials: 'Especiales' };
+    const ES = { All: 'Todas', Breakfast: 'Desayuno', Lunch: 'Almuerzo', Seafood: 'Mariscos', Sides: 'Guarniciones', Sauces: 'Salsas', Drinks: 'Bebidas', Specials: 'Especiales', Wings: 'Alitas', Patties: 'Empanadas', Appetizers: 'Aperitivos', 'Main Courses': 'Platos Fuertes', Desserts: 'Postres', Beverages: 'Bebidas' };
     return ES[key] || key;
   }
   return key;
@@ -626,13 +638,29 @@ function renderLibrary() {
   // Category bar
   let list = S.recipes.slice();
   if (!S.admin) list = list.filter(r => r.is_active !== false);
-  if (S.category !== 'All') list = list.filter(r => (r.category_name || 'Lunch') === S.category);
+  if (S.category !== 'All') list = list.filter(r => recipeCategoryName(r) === S.category);
   const q = S.search.trim().toLowerCase();
   if (q) list = list.filter(r => (r.dish_name || r.name || '').toLowerCase().includes(q) || (r.description || r.quickNote || '').toLowerCase().includes(q));
 
   const catBar = el('div', { className: 'cat-bar', style: { padding: '20px 22px 0', maxWidth: '1440px', margin: '0 auto' } });
-  CATS.forEach(c => {
-    const count = S.recipes.filter(r => (S.admin || r.is_active !== false) && (c.key === 'All' || (r.category_name || 'Lunch') === c.key)).length;
+  // Build category pills dynamically from the categories actually present in recipes
+  const orderList = ['Breakfast','Lunch','Sides','Wings','Patties','Drinks','Appetizers','Main Courses','Desserts','Beverages','Specials','Sauces','Seafood'];
+  const presentNames = [];
+  (S.recipes || []).forEach(r => {
+    if (S.admin || r.is_active !== false) {
+      const n = recipeCategoryName(r);
+      if (n && !presentNames.includes(n)) presentNames.push(n);
+    }
+  });
+  presentNames.sort((a, b) => {
+    const ia = orderList.indexOf(a), ib = orderList.indexOf(b);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib) || a.localeCompare(b);
+  });
+  const pills = [{ key: 'All', color: null }].concat(presentNames.map(n => ({ key: n, color: catColor(n) })));
+  pills.forEach(c => {
+    const count = c.key === 'All'
+      ? S.recipes.filter(r => S.admin || r.is_active !== false).length
+      : S.recipes.filter(r => (S.admin || r.is_active !== false) && recipeCategoryName(r) === c.key).length;
     const isActive = S.category === c.key;
     const col = c.color;
     const pill = el('button', {
@@ -681,7 +709,7 @@ function renderLibrary() {
 }
 
 function renderCard(r) {
-  const cat = r.category_name || r.name && r.category || 'Lunch';
+  const cat = recipeCategoryName(r);
   const col = catColor(cat) || '#e0a83a';
   const inactive = r.is_active === false;
   const mapped = S.useDemo ? {
@@ -728,7 +756,7 @@ function renderCard(r) {
 }
 
 function renderListItem(r) {
-  const cat = r.category_name || 'Lunch';
+  const cat = recipeCategoryName(r);
   const col = catColor(cat) || '#e0a83a';
   const mapped = { name: r.dish_name || r.name, quickNote: r.description || r.quickNote, prepTime: r.prep_time_minutes || r.prepTime, cookTime: r.cook_time_minutes || r.cookTime };
 
@@ -935,7 +963,7 @@ async function loadRecipeForEdit(source) {
       allergens: source.allergens, tips: source.tips, portions: source.portions
     } : mapRecipeForUI(source);
     S.draft = {
-      name: mapped.name || '', category: source.category_name || 'Lunch',
+      name: mapped.name || '', category: recipeCategoryName(source),
       prepTime: String(mapped.prepTime || ''), cookTime: String(mapped.cookTime || ''),
       yield: mapped.yield || '', quickNote: mapped.quickNote || '',
       ingredients: (mapped.ingredients || []).map(i => typeof i === 'string' ? i : i.text),
@@ -952,7 +980,7 @@ async function loadRecipeForEdit(source) {
       const r = data.recipe;
       const mapped = mapRecipeForUI(r);
       S.draft = {
-        name: mapped.name, category: r.category_name || 'Lunch',
+        name: mapped.name, category: recipeCategoryName(r),
         prepTime: String(mapped.prepTime || ''), cookTime: String(mapped.cookTime || ''),
         yield: mapped.yield, quickNote: mapped.quickNote,
         ingredients: mapped.ingredients.map(i => i.text),
@@ -981,9 +1009,9 @@ function renderEditor() {
 
   // Category + active
   const catSelect = el('select', { onChange: e => d.category = e.target.value });
-  CATS.filter(c => c.key !== 'All').forEach(c => {
-    const opt = el('option', { value: c.key }, catLabel(c.key));
-    if (c.key === d.category) opt.selected = true;
+  (S.categories || []).forEach(c => {
+    const opt = el('option', { value: c.name }, catLabel(c.name));
+    if (c.name === d.category) opt.selected = true;
     catSelect.appendChild(opt);
   });
   const activeBtn = el('button', {
@@ -1086,6 +1114,7 @@ async function saveDraft() {
   const payload = {
     dish_name: d.name.trim(),
     description: d.quickNote,
+    category_id: categoryIdByName(d.category),
     prep_time_minutes: parseInt(d.prepTime) || null,
     cook_time_minutes: parseInt(d.cookTime) || null,
     servings: parseInt(d.yield) || 1,
