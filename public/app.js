@@ -17,7 +17,7 @@ const T = {
     tagline: 'Kitchen Recipes', search: 'Search recipes or ingredients…', library: 'Library', timers: 'Timers',
     inactive: 'INACTIVE', edit: 'Edit', del: 'Del', delete: 'Delete', newRecipe: '+ New Recipe',
     prepShort: 'PREP', cookShort: 'COOK', yieldShort: 'YIELD', prepTime: 'PREP TIME', cookTime: 'COOK TIME',
-    total: 'TOTAL', yieldStat: 'YIELD', min: 'min', ingredients: 'INGREDIENTS', allergens: 'ALLERGENS',
+    total: 'TOTAL', yieldStat: 'YIELD', yieldUnit: 'portions', min: 'min', ingredients: 'INGREDIENTS', allergens: 'ALLERGENS',
     holding: 'HOLDING & STORAGE', portion: 'PORTION CONTROL', prepTitle: 'PREP',
     cooking: 'COOKING INSTRUCTIONS', plating: 'PLATING', chefTips: 'CHEF TIPS',
     noRecipes: 'No recipes found', editRecipe: 'Edit recipe',
@@ -42,7 +42,7 @@ const T = {
     tagline: 'Recetas de Cocina', search: 'Buscar recetas o ingredientes…', library: 'Recetario', timers: 'Temporizadores',
     inactive: 'INACTIVA', edit: 'Editar', del: 'Borrar', delete: 'Eliminar', newRecipe: '+ Nueva Receta',
     prepShort: 'PREP', cookShort: 'COCCIÓN', yieldShort: 'RINDE', prepTime: 'PREPARACIÓN', cookTime: 'COCCIÓN',
-    total: 'TOTAL', yieldStat: 'RINDE', min: 'min', ingredients: 'INGREDIENTES', allergens: 'ALÉRGENOS',
+    total: 'TOTAL', yieldStat: 'RINDE', yieldUnit: 'porciones', min: 'min', ingredients: 'INGREDIENTES', allergens: 'ALÉRGENOS',
     holding: 'CONSERVACIÓN', portion: 'PORCIONES', prepTitle: 'PREPARACIÓN',
     cooking: 'INSTRUCCIONES DE COCCIÓN', plating: 'EMPLATADO', chefTips: 'CONSEJOS DEL CHEF',
     noRecipes: 'No se encontraron recetas', editRecipe: 'Editar receta',
@@ -280,7 +280,7 @@ async function apiDelete(path) {
 async function loadRecipes() {
   try {
     // Point to main Servio backend kitchen-assistant recipe routes
-    const data = await apiGet('/api/kitchen-assistant/recipes');
+    const data = await apiGet('/api/kitchen-assistant/recipes' + (S.lang === 'es' ? '?lang=es' : ''));
     // Exclude global seed/demo recipes (no company_id) — not owned by this restaurant
     S.recipes = (data.recipes || []).filter(r => r.company_id);
     S.useDemo = false;
@@ -311,7 +311,7 @@ async function loadRecipeDetail(id) {
     return;
   }
   try {
-    const data = await apiGet('/api/kitchen-assistant/recipes/' + id);
+    const data = await apiGet('/api/kitchen-assistant/recipes/' + id + (S.lang === 'es' ? '?lang=es' : ''));
     S.selectedRecipe = mapRecipeForUI(data.recipe);
     render();
   } catch(e) {
@@ -340,7 +340,7 @@ function mapRecipeForUI(r) {
     category: r.category_name || 'Lunch',
     prepTime: r.prep_time_minutes || 0,
     cookTime: r.cook_time_minutes || 0,
-    yield: r.servings ? (r.servings + ' portions') : '—',
+    yield: r.servings ? (r.servings + ' ' + t().yieldUnit) : '—',
     quickNote: r.description || '',
     ingredients,
     cookSteps: steps,
@@ -594,7 +594,7 @@ function renderHeader() {
   }
 
   const actions = el('div', { className: 'header-actions' });
-  actions.appendChild(el('button', { onClick: () => { S.lang = S.lang === 'en' ? 'es' : 'en'; persistSettings(); render(); } }, '🌐 ', S.lang === 'es' ? 'ES' : 'EN'));
+  actions.appendChild(el('button', { onClick: () => { S.lang = S.lang === 'en' ? 'es' : 'en'; persistSettings(); if (S.view === 'detail' && S.selectedId != null) { loadRecipeDetail(S.selectedId); } else if (S.view === 'library') { loadRecipes(); } else { render(); } } }, '🌐 ', S.lang === 'es' ? 'ES' : 'EN'));
   actions.appendChild(el('button', { className: 'btn-theme', onClick: () => { S.theme = S.theme === 'dark' ? 'light' : 'dark'; persistSettings(); render(); } }, S.theme === 'light' ? '☀' : '☾'));
   actions.appendChild(el('button', { className: 'btn-admin' + (S.admin ? ' on' : ''), onClick: () => { S.admin = !S.admin; render(); } }, S.admin ? t().adminOn : t().adminOff));
 
@@ -687,11 +687,11 @@ function renderCard(r) {
   const mapped = S.useDemo ? {
     name: r.dish_name, quickNote: r.description,
     prepTime: r.prep_time_minutes, cookTime: r.cook_time_minutes,
-    yield: r.servings ? r.servings + ' portions' : '—'
+    yield: r.servings ? r.servings + ' ' + t().yieldUnit : '—'
   } : {
     name: r.dish_name, quickNote: r.description,
     prepTime: r.prep_time_minutes, cookTime: r.cook_time_minutes,
-    yield: r.servings ? r.servings + ' portions' : '—'
+    yield: r.servings ? r.servings + ' ' + t().yieldUnit : '—'
   };
 
   const card = el('div', { className: 'recipe-card', onClick: () => { S.view = 'detail'; S.selectedId = r.id; S.scale = 1; loadRecipeDetail(r.id); } });
