@@ -2,7 +2,7 @@
 //  Servio Kitchen Line — Service Worker (PWA Offline Support)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'servio-kitchen-line-v6';
+const CACHE_NAME = 'servio-kitchen-line-v7';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
