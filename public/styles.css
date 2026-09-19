@@ -185,7 +185,12 @@ img { max-width: 100%; display: block; }
 }
 .card-chip.inactive { background: rgba(224,85,58,.85); color: #fff; }
 .card-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
-.card-title { font-size: 18px; font-weight: 800; font-family: var(--font-head); }
+.card-title { font-size: 18px; font-weight: 800; font-family: var(--font-head); display: flex; flex-direction: column; gap: 2px; line-height: 1.2; }
+.card-title-en { display: block; }
+.card-title-es { display: block; font-size: 13px; font-weight: 600; font-style: italic; color: var(--text-dim); letter-spacing: .01em; }
+.card-note { display: flex; flex-direction: column; gap: 2px; line-height: 1.4; color: var(--text-dim); font-size: 13.5px; }
+.card-note-en { display: block; }
+.card-note-es { display: block; font-style: italic; font-size: 12.5px; color: var(--text-faint); }
 .card-stats { display: flex; gap: 18px; }
 .card-stats > div { display: flex; flex-direction: column; gap: 1px; }
 .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); font-weight: 700; }
@@ -219,15 +224,21 @@ img { max-width: 100%; display: block; }
   border-radius: 8px; flex-shrink: 0;
 }
 .list-body { flex: 1; min-width: 0; }
-.list-title { font-weight: 700; font-size: 16px; font-family: var(--font-head); }
+.list-title { font-weight: 700; font-size: 16px; font-family: var(--font-head); display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+.list-title-en { display: block; }
+.list-title-es { display: block; font-size: 13px; font-style: italic; font-weight: 600; color: var(--text-dim); }
 .list-note { font-size: 13px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .list-meta { font-size: 12px; color: var(--text-faint); font-family: var(--font-mono); font-weight: 600; flex-shrink: 0; }
 
 /* ═══ Detail view ══════════════════════════════════════════════════ */
 .detail-view { padding: 20px 22px 80px; max-width: 1440px; margin: 0 auto; }
 .detail-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-.detail-title { font-size: 32px; }
-.detail-note { color: var(--text-dim); font-size: 15px; margin-top: 6px; max-width: 640px; }
+.detail-title { font-size: 32px; display: flex; flex-direction: column; gap: 4px; line-height: 1.15; }
+.detail-title-en { display: block; }
+.detail-title-es { display: block; font-size: 22px; font-weight: 600; font-style: italic; color: var(--text-dim); }
+.detail-note { color: var(--text-dim); font-size: 15px; margin-top: 6px; max-width: 640px; display: flex; flex-direction: column; gap: 4px; line-height: 1.45; }
+.detail-note-en { display: block; }
+.detail-note-es { display: block; font-style: italic; font-size: 13.5px; color: var(--text-faint); }
 
 .stat-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -294,8 +305,10 @@ img { max-width: 100%; display: block; }
   transition: all .15s;
 }
 .ing-item.checked .ing-box { background: var(--success); border-color: var(--success); color: #fff; }
-.ing-text { font-size: 15px; line-height: 1.45; }
-.ing-item.checked .ing-text { text-decoration: line-through; color: var(--text-faint); }
+.ing-text { font-size: 15px; line-height: 1.45; display: flex; flex-direction: column; gap: 2px; }
+.ing-text-en { display: block; }
+.ing-text-es { display: block; font-size: 13.5px; font-style: italic; color: var(--text-dim); }
+.ing-item.checked .ing-text-en, .ing-item.checked .ing-text-es { text-decoration: line-through; color: var(--text-faint); }
 
 /* Steps */
 .step-item {
@@ -311,8 +324,10 @@ img { max-width: 100%; display: block; }
   transition: all .15s;
 }
 .step-item.checked .step-num { background: var(--success); border-color: var(--success); color: #fff; }
-.step-text { font-size: 15px; line-height: 1.55; flex: 1; }
-.step-item.checked .step-text { text-decoration: line-through; color: var(--text-faint); }
+.step-text { font-size: 15px; line-height: 1.55; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.step-text-en { display: block; }
+.step-text-es { display: block; font-size: 13.5px; font-style: italic; color: var(--text-dim); }
+.step-item.checked .step-text-en, .step-item.checked .step-text-es { text-decoration: line-through; color: var(--text-faint); }
 .step-timer-btn {
   min-height: 44px; padding: 0 14px; margin-top: 10px; border-radius: 9px;
   background: var(--accent); color: var(--accent-ink);

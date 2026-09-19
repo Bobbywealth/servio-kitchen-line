@@ -333,35 +333,88 @@ async function loadRecipeDetail(id) {
 }
 
 // Map API recipe shape → UI recipe shape
+// Now bilingual: every text field has _en and _es variants so the kitchen
+// tablet can show English + Spanish side-by-side regardless of the UI-chrome
+// language toggle. Fields with no stored translation fall back to the base
+// (English) recipe value, so missing translations never blank the UI.
 function mapRecipeForUI(r) {
   if (!r) return null;
-  const ingredients = (r.ingredients || []).map(ing => {
-    let text = ing.name || '';
-    if (ing.amount != null) text = ing.amount + (ing.unit ? ' ' + ing.unit + ' ' : ' ') + text;
-    return { text, order_index: ing.order_index || 0 };
-  }).sort((a, b) => a.order_index - b.order_index);
 
-  const steps = (r.steps || []).sort((a, b) => a.step_number - b.step_number).map(s => ({
-    text: s.instruction,
-    minutes: s.timer_seconds ? Math.round(s.timer_seconds / 60) : null,
-  }));
+  // Build per-locale field maps. `r.i18n` (list) / `r.translations` (detail)
+  // hold every locale the backend has stored. `r.dish_name` etc. are the
+  // base English record (already overlaid by the locale overlay when
+  // ?lang=es is passed), so they're safe fallbacks.
+  const perLocale = r.translations || r.i18n || {};
+  const pickField = (base, locale, field) => {
+    const fromLocale = perLocale[locale] && perLocale[locale][field];
+    if (fromLocale != null && fromLocale !== '') return fromLocale;
+    return base || '';
+  };
+
+  const buildIngredientsForLocale = (locale) => {
+    const localizedList = perLocale[locale] && perLocale[locale].ingredients;
+    const base = (r.ingredients || []);
+    return base.map((ing, idx) => {
+      const ti = Array.isArray(localizedList) ? localizedList[idx] : null;
+      const name = (ti && (ti.name != null && ti.name !== '')) ? ti.name : (ing.name || '');
+      const unit = (ti && ti.unit != null) ? ti.unit : ing.unit;
+      let text = name;
+      if (ing.amount != null) text = ing.amount + (unit ? ' ' + unit + ' ' : ' ') + text;
+      return { text, order_index: ing.order_index || 0 };
+    }).sort((a, b) => a.order_index - b.order_index);
+  };
+
+  const buildStepsForLocale = (locale) => {
+    const localizedList = perLocale[locale] && perLocale[locale].steps;
+    const base = (r.steps || []).slice().sort((a, b) => a.step_number - b.step_number);
+    return base.map((s, idx) => {
+      const ts = Array.isArray(localizedList) ? localizedList[idx] : null;
+      const instruction = (ts && (ts.instruction != null && ts.instruction !== '')) ? ts.instruction : (s.instruction || '');
+      return {
+        text: instruction,
+        minutes: s.timer_seconds ? Math.round(s.timer_seconds / 60) : null,
+      };
+    });
+  };
+
+  const ingredients = buildIngredientsForLocale('en');
+  const steps = buildStepsForLocale('en');
 
   return {
     id: r.id,
     image_url: r.image_url || null,
+    // Bilingual names — cards and detail both render these stacked
+    name_en: pickField(r.dish_name, 'en', 'dish_name'),
+    name_es: pickField(r.dish_name, 'es', 'dish_name'),
+    // Back-compat shim for older render code paths
     name: r.dish_name,
     category: recipeCategoryName(r),
     prepTime: r.prep_time_minutes || 0,
     cookTime: r.cook_time_minutes || 0,
     yield: r.servings ? (r.servings + ' ' + t().yieldUnit) : '—',
+    desc_en: pickField(r.description, 'en', 'description'),
+    desc_es: pickField(r.description, 'es', 'description'),
     quickNote: r.description || '',
-    ingredients,
+    ingredients_en: ingredients,
+    ingredients_es: buildIngredientsForLocale('es'),
+    cookSteps_en: steps,
+    cookSteps_es: buildStepsForLocale('es'),
     cookSteps: steps,
     prepSteps: [],
+    plating_en: r.plating || '—',
+    plating_es: r.plating || '—', // plating not yet translated; mirror so layout is consistent
     platingInstructions: r.plating || '—',
+    holding_en: r.holding || '—',
+    holding_es: r.holding || '—', // holding not yet translated; mirror
     holdingInstructions: r.holding || '—',
+    allergens_en: r.allergens || '—',
+    allergens_es: r.allergens || '—', // allergens not yet translated; mirror
     allergyNotes: r.allergens || '—',
+    tips_en: r.tips || '—',
+    tips_es: r.tips || '—', // chef tips not yet translated; mirror
     chefTips: r.tips || '—',
+    portions_en: r.portions || '—',
+    portions_es: r.portions || '—', // portions note not yet translated; mirror
     portionNotes: r.portions || '—',
     active: r.is_active !== false,
   };
@@ -552,7 +605,11 @@ let _lastDragEnd = 0;            // suppress the click that follows a drag
 function sortRecipes(a, b) {
   const sa = Number(a.sort_order) || 0, sb = Number(b.sort_order) || 0;
   if (sa !== sb) return sa - sb;
-  return String(a.dish_name || a.name || '').localeCompare(String(b.dish_name || b.name || ''));
+  // Prefer English name for sort so manual reorder stays stable regardless of
+  // which language the toggle is currently showing.
+  const an = a.name_en || a.dish_name || a.name || '';
+  const bn = b.name_en || b.dish_name || b.name || '';
+  return String(an).localeCompare(String(bn));
 }
 
 function attachHoldToReorder(card, r) {
@@ -737,7 +794,11 @@ function renderLibrary() {
   if (!S.admin) list = list.filter(r => r.is_active !== false);
   if (S.category !== 'All') list = list.filter(r => recipeCategoryName(r) === S.category);
   const q = S.search.trim().toLowerCase();
-  if (q) list = list.filter(r => (r.dish_name || r.name || '').toLowerCase().includes(q) || (r.description || r.quickNote || '').toLowerCase().includes(q));
+  if (q) list = list.filter(r => {
+    const names = [r.dish_name, r.name, r.name_en, r.name_es].filter(Boolean).map(s => s.toLowerCase());
+    const descs = [r.description, r.quickNote, r.desc_en, r.desc_es].filter(Boolean).map(s => s.toLowerCase());
+    return names.some(n => n.includes(q)) || descs.some(d => d.includes(q));
+  });
   list.sort(sortRecipes);
 
   const catBar = el('div', { className: 'cat-bar', style: { padding: '20px 22px 0', maxWidth: '1440px', margin: '0 auto' } });
@@ -814,13 +875,18 @@ function renderCard(r) {
   const cat = recipeCategoryName(r);
   const col = catColor(cat) || '#e0a83a';
   const inactive = r.is_active === false;
-  const mapped = S.useDemo ? {
-    name: r.dish_name, quickNote: r.description,
-    prepTime: r.prep_time_minutes, cookTime: r.cook_time_minutes,
-    yield: r.servings ? r.servings + ' ' + t().yieldUnit : '—'
-  } : {
-    name: r.dish_name, quickNote: r.description,
-    prepTime: r.prep_time_minutes, cookTime: r.cook_time_minutes,
+  // Bilingual: cards show both English (primary) and Spanish (secondary).
+  // If only one locale is available (e.g. demo recipes), show just that one
+  // — the helper hides the duplicate line.
+  const nameEn = (r.name_en || r.dish_name || '').trim();
+  const nameEs = (r.name_es || '').trim();
+  const showBilingualName = nameEs && nameEs.toLowerCase() !== nameEn.toLowerCase();
+  const quickNoteEn = (r.description || '').trim();
+  const quickNoteEs = (r.desc_es || '').trim();
+  const showBilingualNote = quickNoteEs && quickNoteEs.toLowerCase() !== quickNoteEn.toLowerCase();
+  const mapped = {
+    prepTime: r.prep_time_minutes,
+    cookTime: r.cook_time_minutes,
     yield: r.servings ? r.servings + ' ' + t().yieldUnit : '—'
   };
 
@@ -838,14 +904,23 @@ function renderCard(r) {
     inactive ? el('span', { className: 'card-chip inactive' }, t().inactive) : null
   ));
   card.appendChild(imgArea);
+
+  // Bilingual title block: English on top (primary), Spanish below (secondary)
+  const titleBlock = el('div', { className: 'card-title' },
+    el('div', { className: 'card-title-en' }, nameEn || r.dish_name || ''),
+    showBilingualName ? el('div', { className: 'card-title-es' }, nameEs) : null
+  );
   card.appendChild(el('div', { className: 'card-body' },
-    el('div', { className: 'card-title' }, mapped.name || r.dish_name),
+    titleBlock,
     el('div', { className: 'card-stats' },
       el('div', {}, el('div', { className: 'stat-label' }, t().prepShort), el('div', { className: 'stat-val' }, (mapped.prepTime || 0) + 'm')),
       el('div', {}, el('div', { className: 'stat-label' }, t().cookShort), el('div', { className: 'stat-val' }, (mapped.cookTime || 0) + 'm')),
       el('div', {}, el('div', { className: 'stat-label' }, t().yieldShort), el('div', { className: 'stat-val' }, mapped.yield || '—'))
     ),
-    el('div', { className: 'card-note' }, mapped.quickNote || '')
+    el('div', { className: 'card-note' },
+      el('div', { className: 'card-note-en' }, quickNoteEn || ''),
+      showBilingualNote ? el('div', { className: 'card-note-es' }, quickNoteEs) : null
+    )
   ));
   if (S.admin) {
     const actions = el('div', { className: 'card-actions' });
@@ -861,13 +936,19 @@ function renderCard(r) {
 function renderListItem(r) {
   const cat = recipeCategoryName(r);
   const col = catColor(cat) || '#e0a83a';
-  const mapped = { name: r.dish_name || r.name, quickNote: r.description || r.quickNote, prepTime: r.prep_time_minutes || r.prepTime, cookTime: r.cook_time_minutes || r.cookTime };
+  const nameEn = (r.name_en || r.dish_name || '').trim();
+  const nameEs = (r.name_es || '').trim();
+  const showBilingualName = nameEs && nameEs.toLowerCase() !== nameEn.toLowerCase();
+  const mapped = { prepTime: r.prep_time_minutes || r.prepTime, cookTime: r.cook_time_minutes || r.cookTime };
 
   const item = el('div', { className: 'list-item', onClick: () => { S.view = 'detail'; S.selectedId = r.id; S.scale = 1; loadRecipeDetail(r.id); } });
   item.appendChild(el('span', { className: 'list-chip', style: { background: col + '26', color: col } }, cat));
   item.appendChild(el('div', { className: 'list-body' },
-    el('div', { className: 'list-title' }, mapped.name || r.dish_name),
-    el('div', { className: 'list-note' }, mapped.quickNote || '')
+    el('div', { className: 'list-title' },
+      el('div', { className: 'list-title-en' }, nameEn || r.dish_name || ''),
+      showBilingualName ? el('div', { className: 'list-title-es' }, nameEs) : null
+    ),
+    r.description ? el('div', { className: 'list-note' }, r.description) : null
   ));
   item.appendChild(el('div', { className: 'list-meta' }, t().prepShort + ' ' + (mapped.prepTime || 0) + ' · ' + t().cookShort + ' ' + (mapped.cookTime || 0)));
   return item;
@@ -911,13 +992,26 @@ function renderDetail() {
 
   // Header
   const hdr = el('div', { className: 'detail-header' });
+  const titleEn = (d.name_en || d.name || '').trim();
+  const titleEs = (d.name_es || '').trim();
+  const showBilingualTitle = titleEs && titleEs.toLowerCase() !== titleEn.toLowerCase();
+  const noteEn = (d.quickNote || '').trim();
+  const noteEs = (d.desc_es || '').trim();
+  const showBilingualNote = noteEs && noteEs.toLowerCase() !== noteEn.toLowerCase();
+
   hdr.appendChild(el('div', { style: { flex: '1', minWidth: '280px' } },
     el('div', { style: { display: 'flex', gap: '10px', marginBottom: '14px' } },
       el('span', { style: { padding: '7px 14px', borderRadius: '9px', background: col + '26', color: col, fontFamily: "'Archivo'", fontWeight: '700', fontSize: '13px' } }, catLabel(d.category)),
       d.active === false ? el('span', { style: { padding: '6px 12px', borderRadius: '8px', background: 'rgba(224,85,58,.16)', color: 'var(--danger)', fontFamily: "'Archivo'", fontWeight: '800', fontSize: '11px' } }, tr.inactive) : null
     ),
-    el('h1', { className: 'detail-title' }, d.name),
-    el('p', { className: 'detail-note' }, d.quickNote)
+    el('h1', { className: 'detail-title' },
+      el('span', { className: 'detail-title-en' }, titleEn || d.name),
+      showBilingualTitle ? el('span', { className: 'detail-title-es' }, titleEs) : null
+    ),
+    (noteEn || showBilingualNote) ? el('p', { className: 'detail-note' },
+      noteEn ? el('div', { className: 'detail-note-en' }, noteEn) : null,
+      showBilingualNote ? el('div', { className: 'detail-note-es' }, noteEs) : null
+    ) : null
   ));
   if (S.admin) {
     hdr.appendChild(el('button', { className: 'btn-cancel', onClick: () => { S.view = 'editor'; S.editingId = d.id; loadRecipeForEdit(S.recipes.find(r => r.id === d.id) || d); } }, tr.editRecipe));
@@ -953,17 +1047,27 @@ function renderDetail() {
   const cols = el('div', { className: 'detail-cols' });
   const leftCol = el('div', { className: 'detail-col' });
 
-  // Ingredients
-  leftCol.appendChild(renderSection(tr.ingredients, (d.ingredients || []).map((ing, i) => {
+  // Ingredients — bilingual: each row shows English on top, Spanish below
+  // when a Spanish variant is stored and meaningfully different. Both scale
+  // with the batch multiplier.
+  const ingsEn = d.ingredients_en || d.ingredients || [];
+  const ingsEs = d.ingredients_es || [];
+  leftCol.appendChild(renderSection(tr.ingredients, ingsEn.map((ing, i) => {
     const key = d.id + ':ing:' + i;
     const checked = !!S.checked[key];
-    const scaledText = scaleIng(ing.text || '', S.scale);
+    const scaledTextEn = scaleIng(ing.text || '', S.scale);
+    const esRow = ingsEs[i];
+    const scaledTextEs = esRow ? scaleIng(esRow.text || '', S.scale) : '';
+    const showEs = scaledTextEs && scaledTextEs.toLowerCase() !== scaledTextEn.toLowerCase();
     return el('button', {
       className: 'ing-item' + (checked ? ' checked' : ''),
       onClick: () => { if (checked) delete S.checked[key]; else S.checked[key] = true; persistChecked(); render(); }
     },
       el('span', { className: 'ing-box' }, checked ? '✓' : ''),
-      el('span', { className: 'ing-text' }, scaledText)
+      el('span', { className: 'ing-text' },
+        el('div', { className: 'ing-text-en' }, scaledTextEn),
+        showEs ? el('div', { className: 'ing-text-es' }, scaledTextEs) : null
+      )
     );
   })));
 
@@ -992,7 +1096,7 @@ function renderDetail() {
 
   // Cooking steps
   if (d.cookSteps && d.cookSteps.length > 0) {
-    rightCol.appendChild(renderStepsSection(tr.cooking, d.cookSteps, d.id, 'cook'));
+    rightCol.appendChild(renderStepsSection(tr.cooking, d.cookSteps, d.id, 'cook', d.cookSteps_es));
   }
 
   // Plating
@@ -1024,21 +1128,28 @@ function renderSection(label, content, extraClass) {
   );
 }
 
-function renderStepsSection(label, steps, recipeId, kind) {
+function renderStepsSection(label, steps, recipeId, kind, stepsEs) {
+  const altSteps = stepsEs || [];
   const children = steps.map((s, i) => {
     const key = recipeId + ':' + kind + ':' + i;
     const checked = !!S.checked[key];
-    const text = typeof s === 'string' ? s : (s.text || '');
+    const textEn = typeof s === 'string' ? s : (s.text || '');
     const minutes = typeof s === 'object' && s.minutes != null ? s.minutes : null;
+    const altStep = altSteps[i];
+    const textEs = altStep ? (typeof altStep === 'string' ? altStep : (altStep.text || '')) : '';
+    const showEs = textEs && textEs.toLowerCase() !== textEn.toLowerCase();
     const stepBtn = el('div', {
       className: 'step-item' + (checked ? ' checked' : ''),
       onClick: () => { if (checked) delete S.checked[key]; else S.checked[key] = true; persistChecked(); render(); }
     },
       el('div', { className: 'step-num' }, String(i + 1)),
-      el('div', { className: 'step-text' }, text)
+      el('div', { className: 'step-text' },
+        el('div', { className: 'step-text-en' }, textEn),
+        showEs ? el('div', { className: 'step-text-es' }, textEs) : null
+      )
     );
     if (minutes && minutes > 0) {
-      const timerBtn = el('button', { className: 'step-timer-btn', onClick: e => { e.stopPropagation(); addTimer(S.selectedRecipe.name + ' · ' + t().stepWord + ' ' + (i + 1), minutes); } }, '⏱ ' + t().startTimer(minutes));
+      const timerBtn = el('button', { className: 'step-timer-btn', onClick: e => { e.stopPropagation(); addTimer((S.selectedRecipe.name_en || S.selectedRecipe.name) + ' · ' + t().stepWord + ' ' + (i + 1), minutes); } }, '⏱ ' + t().startTimer(minutes));
       stepBtn.appendChild(timerBtn);
     }
     return stepBtn;
