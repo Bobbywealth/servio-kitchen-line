@@ -4,9 +4,9 @@
   "description": "Servio kitchen display and recipe management for restaurant line cooks",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "landscape",
-  "background_color": "#131210",
-  "theme_color": "#131210",
+  "orientation": "any",
+  "background_color": "#f5f6f2",
+  "theme_color": "#f5f6f2",
   "lang": "en-US",
   "categories": ["food", "business", "productivity"],
   "icons": [
@@ -24,5 +24,6 @@
     }
   ],
   "related_applications": [],
-  "scope": "/"
+  "scope": "/",
+  "id": "/"
 }

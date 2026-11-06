@@ -71,3 +71,29 @@ const token = localStorage.getItem('servio_access_token')
 const url = `https://servio-kitchen-line.onrender.com/?token=${encodeURIComponent(token)}`
 window.open(url, '_blank', 'noopener,noreferrer')
 ```
+
+## Native-friendly kitchen experience (review branch)
+
+- Four-button navigation: Recipes, Search, Timers and Settings.
+- One selected language at a time, with per-step translation disclosure.
+- Cook Mode: focused steps, next/previous, arrow keys, swipe navigation and an optional screen wake lock. Unsupported or denied wake locks are shown honestly; system auto-lock may need adjusting.
+- Checkable, full-width ingredient rows; structured amounts and servings scale together. Display helpers remove database decimal padding without approximating uncommon fractions. Stored recipe quantities and instructions are not modified.
+- Timers use stored durations when available. Text-derived durations are explicitly suggested **check** timers, not completion or food-safety claims.
+- Device/light/dark appearance, larger reading text, visible keyboard focus, a trapped timer dialog and reduced-motion support.
+- Existing editor, timers and category reordering retained. Admin remains a presentation toggle, not an authorization boundary; server permissions are unchanged.
+- Existing PWA manifest now allows portrait and landscape. Home-screen installation uses the browser's supported installation flow. Cache version updated for the new shell assets.
+
+### Validation
+
+Run `npm test` for quantity, unit, scaling and timer-suggestion regression tests.
+The review build was also browser-tested against read-only snapshots of 47 active recipes and representative bilingual recipe details: continuous search, translation disclosure, scaled yield/ingredients, checklist persistence, cooking navigation/completion, timer pause/custom input/focus, settings and editor access. Main views were checked at 360/390/768/1440px, plus Spanish/dark/larger-text layouts at 320/360/390/768px. No production recipe writes were used.
+
+Physical-device wake lock, home-screen installation, offline update behavior and real timer sound remain device-validation steps. No deploy is authorized by this review branch.
+
+Optional repeatable UI smoke test (requires an existing Playwright installation; does not call production APIs):
+
+```bash
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright node tests/browser-smoke.cjs
+```
+
+The browser test serves the real UI with a synthetic bilingual recipe and intercepts all backend requests. It rejects any write attempt and checks five viewport widths without needing credentials.
